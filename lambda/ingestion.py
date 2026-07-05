@@ -5,7 +5,7 @@ Flux :
   1. Appel GET /api/data/<table>?page=X&limite=10000 sur l'API externe
   2. Accumulation de toutes les pages en mémoire
   3. Dépôt unique vers S3 Bronze en format JSON une fois toutes les pages reçues :
-     incoming/<table>/year=YYYY/month=MM/day=DD/<uuid>.json
+     incoming/<table>/eventdate=YYYY-MM-DD/<uuid>.json
 
 Déclencheurs acceptés :
   - EventBridge Scheduler (event vide ou {"tables": [...]})
@@ -118,7 +118,7 @@ def _ingerer_table(table: str) -> dict:
     now    = datetime.now(timezone.utc)
     s3_key = (
         f"incoming/{table}/"
-        f"year={now.year}/month={now.month:02d}/day={now.day:02d}/"
+        f"eventdate={now.strftime('%Y-%m-%d')}/"
         f"{uuid.uuid4()}.json"
     )
 
