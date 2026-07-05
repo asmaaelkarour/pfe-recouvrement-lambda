@@ -37,7 +37,7 @@ s3 = boto3.client("s3")
 API_BASE_URL    = os.environ["API_BASE_URL"].rstrip("/")
 BRONZE_BUCKET   = os.environ["BRONZE_BUCKET"]
 GLUE_JOB_NAME   = os.environ.get("GLUE_JOB_NAME", "")
-LIMITE_PAR_PAGE = 10000
+LIMITE_PAR_PAGE = 50000
 
 TABLES_DEFAUT = [
     "clients",
