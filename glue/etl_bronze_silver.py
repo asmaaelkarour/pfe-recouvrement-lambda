@@ -93,7 +93,7 @@ def clean_generic(df, table):
 # ─────────────────────────────────────────────
 # RÈGLES MÉTIER PAR TABLE (SIMPLIFIED - Add more as schema is validated)
 # ─────────────────────────────────────────────
-def apply_business_rules(df):
+def apply_business_rules(df, table=None):
     """Règles de nettoyage métier basiques - version simplifiée"""
 
     # Normaliser certaines colonnes texte en minuscule si elles existent
