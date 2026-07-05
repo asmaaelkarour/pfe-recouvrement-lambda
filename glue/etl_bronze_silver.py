@@ -91,85 +91,21 @@ def clean_generic(df, table):
 
 
 # ─────────────────────────────────────────────
-# RÈGLES MÉTIER PAR TABLE
+# RÈGLES MÉTIER PAR TABLE (SIMPLIFIED - Add more as schema is validated)
 # ─────────────────────────────────────────────
-def apply_business_rules(df, table):
-    """Règles de nettoyage métier spécifiques par table"""
+def apply_business_rules(df):
+    """Règles de nettoyage métier basiques - version simplifiée"""
 
-    if table == "clients":
-        # Email en minuscule, supprimer clients sans ID
-        if "email" in df.columns:
-            df = df.withColumn("email", F.lower(F.col("email")))
-        df = df.filter((F.col("id_client").isNotNull()) & (F.col("id_client") != ""))
+    # Normaliser certaines colonnes texte en minuscule si elles existent
+    if "statut" in df.columns:
+        df = df.withColumn("statut", F.lower(F.col("statut")))
 
-    elif table == "factures":
-        # Montants positifs, dates cohérentes
-        if "montant" in df.columns:
-            df = df.filter(F.col("montant") >= 0)
-        if "date_facture" in df.columns and "date_echeance" in df.columns:
-            df = df.filter(F.col("date_facture") <= F.col("date_echeance"))
+    if "email" in df.columns:
+        df = df.withColumn("email", F.lower(F.col("email")))
 
-    elif table == "paiements":
-        # Montants positifs, date de paiement récente
-        if "montant" in df.columns:
-            df = df.filter(F.col("montant") > 0)
-        if "date_paiement" in df.columns:
-            df = df.filter(F.col("date_paiement") <= F.current_date())
-
-    elif table == "impayes":
-        # Montants > 0, montant_du >= montant_recouvre
-        if "montant_du" in df.columns:
-            df = df.filter(F.col("montant_du") > 0)
-        if "montant_du" in df.columns and "montant_recouvre" in df.columns:
-            df = df.filter(F.col("montant_du") >= F.col("montant_recouvre"))
-
-    elif table == "relances":
-        # Montant >= 0, statut valide
-        if "montant" in df.columns:
-            df = df.filter(F.col("montant") >= 0)
-        if "statut" in df.columns:
-            valid_statuts = ["en_cours", "resolue", "litigieuse"]
-            df = df.filter(F.lower(F.col("statut")).isin(valid_statuts))
-
-    elif table == "echeanciers":
-        # Date d'échéance future ou actuelle, montant >= 0
-        if "date_echeance" in df.columns:
-            df = df.filter(F.col("date_echeance") >= F.current_date())
-        if "montant" in df.columns:
-            df = df.filter(F.col("montant") >= 0)
-
-    elif table == "litiges":
-        # Statut valide, date de litige récente
-        if "statut" in df.columns:
-            valid_statuts = ["ouvert", "clos", "en_cours"]
-            df = df.filter(F.lower(F.col("statut")).isin(valid_statuts))
-        if "date_litige" in df.columns:
-            df = df.filter(F.col("date_litige") >= F.date_sub(F.current_date(), 730))
-
-    elif table == "mouvements_financiers":
-        # Montant != 0, date récente
-        if "montant" in df.columns:
-            df = df.filter(F.col("montant") != 0)
-        if "date_mouvement" in df.columns:
-            df = df.filter(F.col("date_mouvement") <= F.current_date())
-
-    elif table == "contrats":
-        # Date début <= date fin
-        if "date_debut" in df.columns and "date_fin" in df.columns:
-            df = df.filter(F.col("date_debut") <= F.col("date_fin"))
-
-    elif table == "dossiers_recouvrement":
-        # Montant >= 0, statut valide
-        if "montant_du" in df.columns:
-            df = df.filter(F.col("montant_du") >= 0)
-        if "statut" in df.columns:
-            valid_statuts = ["ouvert", "clos", "suspendu"]
-            df = df.filter(F.lower(F.col("statut")).isin(valid_statuts))
-
-    elif table == "suspensions_ligne":
-        # Date de suspension <= aujourd'hui
-        if "date_suspension" in df.columns:
-            df = df.filter(F.col("date_suspension") <= F.current_date())
+    # Filtrer les montants négatifs si colonne existe
+    if "montant" in df.columns:
+        df = df.filter(F.col("montant") >= 0)
 
     return df
 
@@ -198,7 +134,7 @@ for table in TABLES:
         cleaned_df = clean_generic(raw_df, table)
 
         # Règles métier spécifiques par table
-        cleaned_df = apply_business_rules(cleaned_df, table)
+        cleaned_df = apply_business_rules(cleaned_df)
 
         cleaned_count = cleaned_df.count()
         print(f"  → Clean records: {cleaned_count}")
