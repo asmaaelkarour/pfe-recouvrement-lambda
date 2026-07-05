@@ -183,13 +183,9 @@ for table in TABLES:
     try:
         print(f"\n[Bronze→Silver] Processing table: {table}")
 
-        # Lire la table spécifique depuis Bronze
+        # Lire la table spécifique depuis Bronze (JSON array déjà parsé par Spark)
         source_path = f"s3://{SOURCE_BUCKET}/incoming/{table}/"
         raw_df = spark.read.option("multiline", "true").json(source_path)
-
-        # Exploser l'array JSON en lignes individuelles
-        raw_df = raw_df.select(F.explode(F.col("value")).alias("record"))
-        raw_df = raw_df.select("record.*")
 
         raw_count = raw_df.count()
         print(f"  → Raw records: {raw_count}")
