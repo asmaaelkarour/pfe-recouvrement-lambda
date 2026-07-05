@@ -21,6 +21,7 @@ import io
 import json
 import logging
 import os
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -107,6 +108,30 @@ def lambda_handler(event, context):
 
 
 # ─────────────────────────────────────────────
+# FETCH PAGE AVEC RETRY – Tolérance aux timeouts réseau
+# ─────────────────────────────────────────────
+def _fetch_page_with_retry(table: str, page: int, url: str, max_retries: int = 3) -> dict:
+    backoff_delays = [5, 15]
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            req = urllib.request.Request(url, headers=HEADERS_API)
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                body = resp.read().decode("utf-8")
+                logger.info("[%s] page %d: HTTP %d, body length: %d", table, page, resp.status, len(body))
+                return json.loads(body)
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:
+            if attempt < max_retries:
+                delay = backoff_delays[attempt - 2] if attempt > 1 else backoff_delays[0]
+                logger.warning("[%s] page %d attempt %d/%d failed (%s), retrying in %ds",
+                             table, page, attempt, max_retries, str(exc), delay)
+                time.sleep(delay)
+            else:
+                logger.error("[%s] page %d all %d attempts failed", table, page, max_retries)
+                raise
+
+
+# ─────────────────────────────────────────────
 # INGESTION D'UNE TABLE (pagination + upload S3)
 #
 # Accumulation de toutes les pages en mémoire.
@@ -128,16 +153,7 @@ def _ingerer_table(table: str) -> dict:
 
     while True:
         url = f"{API_BASE_URL}/api/data/{table}?page={page}&limite={LIMITE_PAR_PAGE}"
-        req = urllib.request.Request(url, headers=HEADERS_API)
-
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            body = resp.read().decode("utf-8")
-            logger.info("[%s] page %d: HTTP %d, body length: %d", table, page, resp.status, len(body))
-            try:
-                payload = json.loads(body)
-            except json.JSONDecodeError:
-                logger.error("[%s] Invalid JSON response. First 500 chars: %s", table, body[:500])
-                raise
+        payload = _fetch_page_with_retry(table, page, url)
 
         donnees_totales.extend(payload.get("donnees", []))
         total_lignes += len(payload.get("donnees", []))
