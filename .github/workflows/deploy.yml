@@ -31,39 +31,40 @@ jobs:
         run: # flake8 check disabled temporarily
 
   # Deploy Lambda & Glue to S3
-  deploy:
-    needs: validate
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Package Lambda
-        run: |
-          cd lambda
-          pip install boto3 -t .
-          zip -r ingestion.zip . -x "*.git*"
-          aws s3 cp ingestion.zip s3://pfe-recouvrement-lambda-artifacts/ingestion.zip
-          cd ..
-
-      - name: Upload Glue Scripts to S3
-        run: |
-          aws s3 cp glue/etl_bronze_silver.py s3://pfe-recouvrement-glue-scripts/etl_bronze_silver.py
-          aws s3 cp glue/etl_silver_gold.py s3://pfe-recouvrement-glue-scripts/etl_silver_gold.py
-
-      - name: Notify success
-        if: success()
-        run: |
-          echo "✓ Lambda & Glue scripts deployed – $(date -u)" >> $GITHUB_STEP_SUMMARY
+  # TODO: uncomment after configuring AWS secrets in GitHub repo settings
+  # deploy:
+  #   needs: validate
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #   environment: production
+  #
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: ${{ env.PYTHON_VERSION }}
+  #
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #
+  #     - name: Package Lambda
+  #       run: |
+  #         cd lambda
+  #         pip install boto3 -t .
+  #         zip -r ingestion.zip . -x "*.git*"
+  #         aws s3 cp ingestion.zip s3://pfe-recouvrement-lambda-artifacts/ingestion.zip
+  #         cd ..
+  #
+  #     - name: Upload Glue Scripts to S3
+  #       run: |
+  #         aws s3 cp glue/etl_bronze_silver.py s3://pfe-recouvrement-glue-scripts/etl_bronze_silver.py
+  #         aws s3 cp glue/etl_silver_gold.py s3://pfe-recouvrement-glue-scripts/etl_silver_gold.py
+  #
+  #     - name: Notify success
+  #       if: success()
+  #       run: |
+  #         echo "✓ Lambda & Glue scripts deployed – $(date -u)" >> $GITHUB_STEP_SUMMARY
