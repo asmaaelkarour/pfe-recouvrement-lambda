@@ -34,9 +34,9 @@ logger.setLevel(logging.INFO)
 
 s3 = boto3.client("s3")
 
-API_BASE_URL    = os.environ["API_BASE_URL"].rstrip("/")
-BRONZE_BUCKET   = os.environ["BRONZE_BUCKET"]
-GLUE_JOB_NAME   = os.environ.get("GLUE_JOB_NAME", "")
+API_BASE_URL = os.environ["API_BASE_URL"].rstrip("/")
+BRONZE_BUCKET = os.environ["BRONZE_BUCKET"]
+GLUE_JOB_NAME = os.environ.get("GLUE_JOB_NAME", "")
 LIMITE_PAR_PAGE = 50000
 
 TABLES_DEFAUT = [
@@ -54,8 +54,8 @@ TABLES_DEFAUT = [
 ]
 
 HEADERS_API = {
-    "Accept":                     "application/json",
-    "User-Agent":                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Accept": "application/json",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     "ngrok-skip-browser-warning": "true",
 }
 
@@ -71,14 +71,18 @@ def lambda_handler(event, context):
     logger.info("Tables à ingérer : %s", tables)
 
     resultats = []
-    erreurs   = []
+    erreurs = []
 
     for table in tables:
         try:
             resultat = _ingerer_table(table)
             resultats.append(resultat)
-            logger.info("[%s] OK — %d lignes → s3://%s/%s",
-                        table, resultat["lignes"], BRONZE_BUCKET, resultat["s3_key"])
+            logger.info(
+                "[%s] OK — %d lignes → s3://%s/%s",
+                table,
+                resultat["lignes"],
+                BRONZE_BUCKET,
+                resultat["s3_key"])
         except urllib.error.HTTPError as exc:
             msg = f"HTTP {exc.code} : {exc.reason}"
             logger.error("[%s] %s", table, msg)
@@ -88,18 +92,22 @@ def lambda_handler(event, context):
             logger.error("[%s] %s", table, msg)
             erreurs.append({"table": table, "erreur": msg})
         except Exception as exc:  # noqa: BLE001
-            logger.error("[%s] Erreur inattendue : %s", table, exc, exc_info=True)
+            logger.error(
+                "[%s] Erreur inattendue : %s",
+                table,
+                exc,
+                exc_info=True)
             erreurs.append({"table": table, "erreur": str(exc)})
 
     if GLUE_JOB_NAME and resultats:
         _declencher_glue()
 
-    statut    = "OK" if not erreurs else ("PARTIEL" if resultats else "ERREUR")
+    statut = "OK" if not erreurs else ("PARTIEL" if resultats else "ERREUR")
     code_http = 200 if not erreurs else 207
 
     return {
         "statusCode": code_http,
-        "headers":    {"Content-Type": "application/json"},
+        "headers": {"Content-Type": "application/json"},
         "body": json.dumps(
             {"statut": statut, "tables_traitees": resultats, "erreurs": erreurs},
             ensure_ascii=False,
@@ -110,7 +118,11 @@ def lambda_handler(event, context):
 # ─────────────────────────────────────────────
 # FETCH PAGE AVEC RETRY – Tolérance aux timeouts réseau
 # ─────────────────────────────────────────────
-def _fetch_page_with_retry(table: str, page: int, url: str, max_retries: int = 3) -> dict:
+def _fetch_page_with_retry(
+        table: str,
+        page: int,
+        url: str,
+        max_retries: int = 3) -> dict:
     backoff_delays = [5, 15]
 
     for attempt in range(1, max_retries + 1):
@@ -118,16 +130,32 @@ def _fetch_page_with_retry(table: str, page: int, url: str, max_retries: int = 3
             req = urllib.request.Request(url, headers=HEADERS_API)
             with urllib.request.urlopen(req, timeout=180) as resp:
                 body = resp.read().decode("utf-8")
-                logger.info("[%s] page %d: HTTP %d, body length: %d", table, page, resp.status, len(body))
+                logger.info(
+                    "[%s] page %d: HTTP %d, body length: %d",
+                    table,
+                    page,
+                    resp.status,
+                    len(body))
                 return json.loads(body)
         except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:
             if attempt < max_retries:
-                delay = backoff_delays[attempt - 2] if attempt > 1 else backoff_delays[0]
-                logger.warning("[%s] page %d attempt %d/%d failed (%s), retrying in %ds",
-                             table, page, attempt, max_retries, str(exc), delay)
+                delay = backoff_delays[attempt -
+                                       2] if attempt > 1 else backoff_delays[0]
+                logger.warning(
+                    "[%s] page %d attempt %d/%d failed (%s), retrying in %ds",
+                    table,
+                    page,
+                    attempt,
+                    max_retries,
+                    str(exc),
+                    delay)
                 time.sleep(delay)
             else:
-                logger.error("[%s] page %d all %d attempts failed", table, page, max_retries)
+                logger.error(
+                    "[%s] page %d all %d attempts failed",
+                    table,
+                    page,
+                    max_retries)
                 raise
 
 
@@ -140,7 +168,7 @@ def _fetch_page_with_retry(table: str, page: int, url: str, max_retries: int = 3
 # ─────────────────────────────────────────────
 
 def _ingerer_table(table: str) -> dict:
-    now    = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
     s3_key = (
         f"incoming/{table}/"
         f"eventdate={now.strftime('%Y-%m-%d')}/"
@@ -148,8 +176,8 @@ def _ingerer_table(table: str) -> dict:
     )
 
     donnees_totales = []
-    total_lignes    = 0
-    page            = 1
+    total_lignes = 0
+    page = 1
 
     while True:
         url = f"{API_BASE_URL}/api/data/{table}?page={page}&limite={LIMITE_PAR_PAGE}"
@@ -157,7 +185,7 @@ def _ingerer_table(table: str) -> dict:
 
         donnees_totales.extend(payload.get("donnees", []))
         total_lignes += len(payload.get("donnees", []))
-        total_pages   = int(payload.get("total_pages", 0))
+        total_pages = int(payload.get("total_pages", 0))
 
         logger.info("[%s] page %d/%d — %d lignes au total",
                     table, page, total_pages, total_lignes)
@@ -167,19 +195,27 @@ def _ingerer_table(table: str) -> dict:
 
         page += 1
 
-    # Upload unique vers S3 Bronze en format JSON une fois toutes les pages reçues
+    # Upload unique vers S3 Bronze en format JSON une fois toutes les pages
+    # reçues
     buffer = io.BytesIO()
-    buffer.write(json.dumps(donnees_totales, ensure_ascii=False).encode("utf-8"))
+    buffer.write(
+        json.dumps(
+            donnees_totales,
+            ensure_ascii=False).encode("utf-8"))
     buffer.seek(0)
 
     s3.put_object(
-        Bucket      = BRONZE_BUCKET,
-        Key         = s3_key,
-        Body        = buffer,
-        ContentType = "application/json",
+        Bucket=BRONZE_BUCKET,
+        Key=s3_key,
+        Body=buffer,
+        ContentType="application/json",
     )
 
-    return {"table": table, "lignes": total_lignes, "s3_key": s3_key, "statut": "ok"}
+    return {
+        "table": table,
+        "lignes": total_lignes,
+        "s3_key": s3_key,
+        "statut": "ok"}
 
 
 # ─────────────────────────────────────────────

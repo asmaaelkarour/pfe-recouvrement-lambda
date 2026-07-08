@@ -29,20 +29,20 @@ args = getResolvedOptions(sys.argv, [
     "DATABASE_NAME",
 ])
 
-sc          = SparkContext()
+sc = SparkContext()
 glueContext = GlueContext(sc)
-spark       = glueContext.spark_session
-job         = Job(glueContext)
+spark = glueContext.spark_session
+job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
 SOURCE_BUCKET = args["SOURCE_BUCKET"]
 TARGET_BUCKET = args["TARGET_BUCKET"]
 DATABASE_NAME = args["DATABASE_NAME"]
-RUN_DATE      = datetime.utcnow().strftime("%Y-%m-%d")
+RUN_DATE = datetime.utcnow().strftime("%Y-%m-%d")
 
-print(f"[Bronze→Silver] Starting ETL run: {RUN_DATE}")
-print(f"  Source : s3://{SOURCE_BUCKET}/incoming/")
-print(f"  Target : s3://{TARGET_BUCKET}/silver/")
+print("[Bronze→Silver] Starting ETL run: {RUN_DATE}")
+print("  Source : s3://{SOURCE_BUCKET}/incoming/")
+print("  Target : s3://{TARGET_BUCKET}/silver/")
 
 # ─────────────────────────────────────────────
 # TABLES À TRAITER
@@ -64,6 +64,8 @@ TABLES = [
 # ─────────────────────────────────────────────
 # NETTOYAGE GÉNÉRIQUE
 # ─────────────────────────────────────────────
+
+
 def clean_generic(df, table):
     """Nettoyage générique applicable à toutes les tables"""
 
@@ -80,9 +82,9 @@ def clean_generic(df, table):
     df = df.withColumn("table_name", F.lit(table))
 
     # Ajouter colonnes de partition (basé sur ingested_at)
-    df = df.withColumn("year",  F.year(F.col("ingested_at")))
+    df = df.withColumn("year", F.year(F.col("ingested_at")))
     df = df.withColumn("month", F.month(F.col("ingested_at")))
-    df = df.withColumn("day",   F.dayofmonth(F.col("ingested_at")))
+    df = df.withColumn("day", F.dayofmonth(F.col("ingested_at")))
 
     # Dédoublonnage
     df = df.dropDuplicates(["record_id"])
@@ -117,17 +119,18 @@ total_written = 0
 
 for table in TABLES:
     try:
-        print(f"\n[Bronze→Silver] Processing table: {table}")
+        print("\n[Bronze→Silver] Processing table: {table}")
 
-        # Lire la table spécifique depuis Bronze (JSON array déjà parsé par Spark)
-        source_path = f"s3://{SOURCE_BUCKET}/incoming/{table}/"
+        # Lire la table spécifique depuis Bronze (JSON array déjà parsé par
+        # Spark)
+        source_path = "s3://{SOURCE_BUCKET}/incoming/{table}/"
         raw_df = spark.read.option("multiline", "true").json(source_path)
 
         raw_count = raw_df.count()
-        print(f"  → Raw records: {raw_count}")
+        print("  → Raw records: {raw_count}")
 
         if raw_count == 0:
-            print(f"  ⚠ No data for table {table}, skipping")
+            print("  ⚠ No data for table {table}, skipping")
             continue
 
         # Nettoyage générique
@@ -137,10 +140,10 @@ for table in TABLES:
         cleaned_df = apply_business_rules(cleaned_df)
 
         cleaned_count = cleaned_df.count()
-        print(f"  → Clean records: {cleaned_count}")
+        print("  → Clean records: {cleaned_count}")
 
         # Écriture en Parquet partitionné (une table Silver par source table)
-        target_path = f"s3://{TARGET_BUCKET}/silver/{table}/"
+        target_path = "s3://{TARGET_BUCKET}/silver/{table}/"
 
         cleaned_df.write \
             .mode("append") \
@@ -148,14 +151,14 @@ for table in TABLES:
             .option("compression", "snappy") \
             .parquet(target_path)
 
-        print(f"  ✓ Written to: {target_path}")
+        print("  ✓ Written to: {target_path}")
         total_written += cleaned_count
 
-    except Exception as e:
-        print(f"  ✗ Error processing table {table}: {str(e)}")
+    except Exception as error:
+        print(f"  ✗ Error processing table {table}: {str(error)}")
         raise
 
-print(f"\n[Bronze→Silver] ETL completed successfully.")
-print(f"  Total records written: {total_written}")
+print("\n[Bronze→Silver] ETL completed successfully.")
+print("  Total records written: {total_written}")
 
 job.commit()
