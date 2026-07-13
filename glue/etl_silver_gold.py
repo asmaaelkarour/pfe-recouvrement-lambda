@@ -155,10 +155,10 @@ write_gold_table(gold_df, "gold_recouvrement", "categorie_client")
 # =====================================================================
 relances_par_client = relances_df.groupBy("client_id").agg(
     F.count("relance_id").alias("nb_relances_total"),
-    F.sum(F.when(F.col("resultat") == "Paiement effectue", 1).otherwise(0)).alias("nb_paiements_suite_relance"),
-    F.sum(F.when(F.col("resultat") == "Promesse de paiement", 1).otherwise(0)).alias("nb_promesses"),
-    F.sum(F.when(F.col("resultat") == "Sans suite", 1).otherwise(0)).alias("nb_sans_suite"),
-    F.sum(F.when(F.col("resultat") == "Refus", 1).otherwise(0)).alias("nb_refus"),
+    F.sum(F.when(F.col("resultat") == "paiement effectue", 1).otherwise(0)).alias("nb_paiements_suite_relance"),
+    F.sum(F.when(F.col("resultat") == "promesse de paiement", 1).otherwise(0)).alias("nb_promesses"),
+    F.sum(F.when(F.col("resultat") == "sans suite", 1).otherwise(0)).alias("nb_sans_suite"),
+    F.sum(F.when(F.col("resultat") == "refus", 1).otherwise(0)).alias("nb_refus"),
 )
 relances_par_client = relances_par_client.withColumn(
     "taux_efficacite_relance",
@@ -184,9 +184,9 @@ write_gold_table(relances_par_client, "gold_relances", "efficacite_categorie")
 # =====================================================================
 litiges_agg = litiges_df.groupBy("client_id").agg(
     F.count("litige_id").alias("nb_litiges_total"),
-    F.sum(F.when(F.col("statut_litige") == "Ouvert", 1).otherwise(0)).alias("nb_litiges_ouverts"),
-    F.sum(F.when(F.col("statut_litige") == "En cours", 1).otherwise(0)).alias("nb_litiges_en_cours"),
-    F.sum(F.when(F.col("statut_litige") == "Cloture", 1).otherwise(0)).alias("nb_litiges_clotures"),
+    F.sum(F.when(F.col("statut_litige") == "ouvert", 1).otherwise(0)).alias("nb_litiges_ouverts"),
+    F.sum(F.when(F.col("statut_litige") == "en cours", 1).otherwise(0)).alias("nb_litiges_en_cours"),
+    F.sum(F.when(F.col("statut_litige") == "cloture", 1).otherwise(0)).alias("nb_litiges_clotures"),
 )
 litiges_agg = litiges_agg.withColumnRenamed("client_id", "id_client")
 litiges_agg = litiges_agg.withColumn("eventdate", F.lit(RUN_DATE))
@@ -202,9 +202,9 @@ write_gold_table(litiges_agg, "gold_litiges", "a_litige_actif")
 # =====================================================================
 contrats_agg = contrats_df.groupBy("client_id").agg(
     F.count("contrat_id").alias("nb_contrats_total"),
-    F.sum(F.when(F.col("statut_contrat") == "Actif", 1).otherwise(0)).alias("nb_contrats_actifs"),
-    F.sum(F.when(F.col("statut_contrat") == "Resilie", 1).otherwise(0)).alias("nb_contrats_resilies"),
-    F.sum(F.when(F.col("statut_contrat") == "Suspendu", 1).otherwise(0)).alias("nb_contrats_suspendus"),
+    F.sum(F.when(F.col("statut_contrat") == "actif", 1).otherwise(0)).alias("nb_contrats_actifs"),
+    F.sum(F.when(F.col("statut_contrat") == "resilie", 1).otherwise(0)).alias("nb_contrats_resilies"),
+    F.sum(F.when(F.col("statut_contrat") == "suspendu", 1).otherwise(0)).alias("nb_contrats_suspendus"),
 )
 contrats_agg = contrats_agg.withColumn(
     "statut_global",
