@@ -186,7 +186,7 @@ litiges_agg = litiges_df.groupBy("client_id").agg(
     F.count("litige_id").alias("nb_litiges_total"),
     F.sum(F.when(F.col("statut_litige") == "ouvert", 1).otherwise(0)).alias("nb_litiges_ouverts"),
     F.sum(F.when(F.col("statut_litige") == "en cours", 1).otherwise(0)).alias("nb_litiges_en_cours"),
-    F.sum(F.when(F.col("statut_litige") == "cloture", 1).otherwise(0)).alias("nb_litiges_clotures"),
+    F.sum(F.when(F.col("statut_litige") == "clôturé", 1).otherwise(0)).alias("nb_litiges_clotures"),
 )
 litiges_agg = litiges_agg.withColumnRenamed("client_id", "id_client")
 litiges_agg = litiges_agg.withColumn("eventdate", F.lit(RUN_DATE))
@@ -203,7 +203,7 @@ write_gold_table(litiges_agg, "gold_litiges", "a_litige_actif")
 contrats_agg = contrats_df.groupBy("client_id").agg(
     F.count("contrat_id").alias("nb_contrats_total"),
     F.sum(F.when(F.col("statut_contrat") == "actif", 1).otherwise(0)).alias("nb_contrats_actifs"),
-    F.sum(F.when(F.col("statut_contrat") == "resilie", 1).otherwise(0)).alias("nb_contrats_resilies"),
+    F.sum(F.when(F.col("statut_contrat") == "résilié", 1).otherwise(0)).alias("nb_contrats_resilies"),
     F.sum(F.when(F.col("statut_contrat") == "suspendu", 1).otherwise(0)).alias("nb_contrats_suspendus"),
 )
 contrats_agg = contrats_agg.withColumn(
