@@ -44,6 +44,10 @@ RUN_DATE = datetime.utcnow().strftime("%Y-%m-%d")
 
 print("[Silver->Gold] Starting ETL run: " + RUN_DATE)
 
+# Whitelists pour nettoyer les donnees corrompues a la source (Bronze)
+AGENCES_VALIDES = ["Interne", "RecouvreTout", "Agence Alpha", "DebtCollect Pro"]
+BUCKETS_VALIDES = ["0-30 jours", "31-60 jours", "61-90 jours", "91-180 jours", "181-365 jours", "365+ jours"]
+
 
 def read_silver_table(table_name):
     path = "s3://" + SOURCE_BUCKET + "/silver/" + table_name + "/"
@@ -221,7 +225,8 @@ write_gold_table(contrats_agg, "gold_contrats", "statut_global")
 # =====================================================================
 # TABLE 5 : gold_aging (repartition des impayes par anciennete)
 # =====================================================================
-aging_agg = impayes_df.groupBy("bucket_anciennete").agg(
+impayes_df_clean = impayes_df.filter(F.col("bucket_anciennete").isin(BUCKETS_VALIDES))
+aging_agg = impayes_df_clean.groupBy("bucket_anciennete").agg(
     F.count("impaye_id").alias("nb_impayes"),
     F.sum("montant_impaye_num").alias("montant_total"),
     F.countDistinct("client_id").alias("nb_clients_concernes"),
@@ -237,7 +242,8 @@ client_recouvre = gold_df.select(
     F.col("id_client").alias("client_id"), "montant_recouvre"
 )
 
-agence_base = dossiers_df.join(client_recouvre, on="client_id", how="left")
+dossiers_df_clean = dossiers_df.filter(F.col("agence_recouvrement").isin(AGENCES_VALIDES))
+agence_base = dossiers_df_clean.join(client_recouvre, on="client_id", how="left")
 agence_base = agence_base.fillna({"montant_recouvre": 0})
 
 agence_agg = agence_base.groupBy("agence_recouvrement").agg(
